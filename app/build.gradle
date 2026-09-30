@@ -4,8 +4,15 @@
  */
 
 plugins {
-    // Apply the application plugin to build and run the Swing desktop app.
     id 'application'
+    id 'base'
+    alias(libs.plugins.jpackage)
+}
+
+version = '1.0.0'
+
+base {
+    archivesName = 'GeneradorDeDocumentos'
 }
 
 repositories {
@@ -42,4 +49,59 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+// Snapshot aplication jar + all runtime dependencies as input for jpackage.
+def jpackageInputDir = layout.buildDirectory.dir('jpackage-input')
+
+tasks.register('prepareJpackageInput', Sync) {
+    dependsOn jar
+    into jpackageInputDir
+    from jar
+    from configurations.runtimeClasspath
+}
+
+// Minimal runtime image computed with jdeps for this app (Swing + POI).
+// jpackage does not trim its runtime for non-modular apps, so we build it with jlink
+// and pass it via --runtime-image.
+def runtimeModules = 'java.base,java.desktop,java.logging,java.security.jgss,java.xml.crypto'
+def jlinkOutput = layout.buildDirectory.dir('jlink-runtime').get().asFile
+def jlinkExecutable = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+}.get().metadata.installationPath.asFile.path + '/bin/jlink'
+
+tasks.register('cleanJlinkRuntime', Delete) {
+    delete jlinkOutput
+}
+
+tasks.register('createRuntimeImage', Exec) {
+    dependsOn tasks.named('cleanJlinkRuntime')
+    commandLine jlinkExecutable,
+            '--add-modules', runtimeModules,
+            '--strip-debug',
+            '--no-header-files',
+            '--no-man-pages',
+            '--compress', 'zip-6',
+            '--output', jlinkOutput.path
+}
+
+tasks.named('jpackage') {
+    dependsOn tasks.named('prepareJpackageInput')
+    dependsOn tasks.named('createRuntimeImage')
+
+    input = jpackageInputDir
+    destination = layout.buildDirectory.dir('jpackage')
+    runtimeImage = layout.buildDirectory.dir('jlink-runtime')
+
+    appName = 'GeneradorDeDocumentos'
+    appDescription = 'Generador de documentos Word de escritorio'
+    mainJar = jar.archiveFileName
+    mainClass = 'com.fidelg.documentgenerator.App'
+    type = org.panteleyev.jpackage.ImageType.APP_IMAGE
+}
+
+tasks.register('packageWindows') {
+    group = 'distribution'
+    description = 'Genera el app-image portable con jpackage (Windows con JDK Windows; en WSL produce un app-image Linux).'
+    dependsOn tasks.named('jpackage')
 }

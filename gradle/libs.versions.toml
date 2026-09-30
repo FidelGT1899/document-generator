@@ -4,7 +4,11 @@
 [versions]
 poi = "5.5.1"
 junit-jupiter = "5.12.1"
+jpackage = "1.7.6"
 
 [libraries]
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+
+[plugins]
+jpackage = { id = "org.panteleyev.jpackageplugin", version.ref = "jpackage" }
