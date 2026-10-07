@@ -1,5 +1,7 @@
 package com.fidelg.documentgenerator.infrastructure;
 
+import com.fidelg.documentgenerator.domain.DocumentBlock;
+import com.fidelg.documentgenerator.domain.DocumentBlocks;
 import com.fidelg.documentgenerator.domain.DocumentRequest;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -15,9 +17,9 @@ public class WordDocumentGenerator {
 
     public void generate(DocumentRequest request, Path outputFile) throws IOException {
         try (XWPFDocument document = new XWPFDocument()) {
-            addTitle(document, request.title());
-            addAuthor(document, request.author());
-            addBody(document, request.body());
+            for (DocumentBlock block : DocumentBlocks.from(request.title(), request.author(), request.body())) {
+                addBlock(document, block);
+            }
 
             try (OutputStream out = Files.newOutputStream(outputFile)) {
                 document.write(out);
@@ -25,28 +27,22 @@ public class WordDocumentGenerator {
         }
     }
 
-    private void addTitle(XWPFDocument document, String title) {
+    private void addBlock(XWPFDocument document, DocumentBlock block) {
         XWPFParagraph paragraph = document.createParagraph();
-        paragraph.setAlignment(ParagraphAlignment.CENTER);
-        XWPFRun run = paragraph.createRun();
-        run.setText(title);
-        run.setBold(true);
-        run.setFontSize(22);
-    }
+        paragraph.setAlignment(block.alignment() == DocumentBlock.Alignment.CENTER
+                ? ParagraphAlignment.CENTER
+                : ParagraphAlignment.LEFT);
 
-    private void addAuthor(XWPFDocument document, String author) {
-        XWPFParagraph paragraph = document.createParagraph();
-        paragraph.setAlignment(ParagraphAlignment.CENTER);
-        XWPFRun run = paragraph.createRun();
-        run.setText(author);
-        run.setItalic(true);
-        run.setFontSize(12);
-    }
-
-    private void addBody(XWPFDocument document, String body) {
-        XWPFParagraph paragraph = document.createParagraph();
-        XWPFRun run = paragraph.createRun();
-        run.setText(body);
-        run.setFontSize(12);
+        String[] lines = block.text().split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                paragraph.createRun().addBreak();
+            }
+            XWPFRun run = paragraph.createRun();
+            run.setBold(block.bold());
+            run.setItalic(block.italic());
+            run.setFontSize(block.fontSize());
+            run.setText(lines[i]);
+        }
     }
 }

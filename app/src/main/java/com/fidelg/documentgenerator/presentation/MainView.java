@@ -1,5 +1,8 @@
 package com.fidelg.documentgenerator.presentation;
 
+import com.fidelg.documentgenerator.domain.DocumentBlock;
+import com.fidelg.documentgenerator.preview.PreviewPanel;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -8,8 +11,11 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -18,12 +24,14 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 
 public class MainView extends JFrame {
     private final JTextField titleField = new JTextField(30);
     private final JTextField authorField = new JTextField(30);
     private final JTextArea bodyArea = new JTextArea(10, 30);
     private final JButton generateButton = new JButton("Generar documento");
+    private final PreviewPanel previewPanel = new PreviewPanel();
 
     private MainViewListener listener;
 
@@ -31,14 +39,19 @@ public class MainView extends JFrame {
         super("Generador de documentos");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
-        add(buildForm(), BorderLayout.CENTER);
+        add(buildContent(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
-        setSize(520, 420);
+        listenForFormChanges();
+        setSize(1360, 850);
         setLocationRelativeTo(null);
     }
 
     public void setListener(MainViewListener listener) {
         this.listener = listener;
+    }
+
+    public void showPreview(List<DocumentBlock> blocks) {
+        previewPanel.setDocument(blocks);
     }
 
     public void setBusy(boolean busy) {
@@ -53,6 +66,19 @@ public class MainView extends JFrame {
     public void showSuccess(Path outputFile) {
         JOptionPane.showMessageDialog(this, "Documento generado en: " + outputFile,
                 "Éxito", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private JSplitPane buildContent() {
+        JPanel form = buildForm();
+        JScrollPane preview = new JScrollPane(previewPanel);
+        preview.setBorder(BorderFactory.createTitledBorder("Vista previa"));
+        preview.getVerticalScrollBar().setUnitIncrement(16);
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, form, preview);
+        split.setResizeWeight(0.35);
+        split.setContinuousLayout(true);
+        split.setDividerLocation(form.getPreferredSize().width + 12);
+        return split;
     }
 
     private JPanel buildForm() {
@@ -102,14 +128,45 @@ public class MainView extends JFrame {
         return panel;
     }
 
+    private void listenForFormChanges() {
+        DocumentListener changes = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                notifyFormChanged();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                notifyFormChanged();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                notifyFormChanged();
+            }
+        };
+        titleField.getDocument().addDocumentListener(changes);
+        authorField.getDocument().addDocumentListener(changes);
+        bodyArea.getDocument().addDocumentListener(changes);
+    }
+
+    private void notifyFormChanged() {
+        if (listener != null) {
+            listener.formChanged(currentForm());
+        }
+    }
+
+    private DocumentFormData currentForm() {
+        return new DocumentFormData(titleField.getText(), authorField.getText(), bodyArea.getText());
+    }
+
     private void generateDocument() {
         if (listener == null) {
             return;
         }
         Path outputFile = chooseOutputFile();
         if (outputFile != null) {
-            listener.generateDocument(new DocumentFormData(
-                    titleField.getText(), authorField.getText(), bodyArea.getText()), outputFile);
+            listener.generateDocument(currentForm(), outputFile);
         }
     }
 

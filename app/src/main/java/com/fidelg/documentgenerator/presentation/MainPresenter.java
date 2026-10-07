@@ -1,6 +1,7 @@
 package com.fidelg.documentgenerator.presentation;
 
 import com.fidelg.documentgenerator.application.GenerateDocumentService;
+import com.fidelg.documentgenerator.domain.DocumentBlocks;
 import com.fidelg.documentgenerator.domain.DocumentRequest;
 
 import javax.swing.SwingWorker;
@@ -14,6 +15,11 @@ public class MainPresenter implements MainViewListener {
         this.view = view;
         this.service = service;
         this.view.setListener(this);
+    }
+
+    @Override
+    public void formChanged(DocumentFormData form) {
+        view.showPreview(DocumentBlocks.from(form.title(), form.author(), form.body()));
     }
 
     @Override
