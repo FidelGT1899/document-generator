@@ -28,6 +28,9 @@ dependencies {
 
     // Apache POI for generating .docx documents. Kept isolated in the infrastructure layer.
     implementation libs.poi.ooxml
+
+    // Jackson for JSON draft persistence. Kept isolated in the infrastructure layer.
+    implementation libs.jackson.databind
 }
 
 java {

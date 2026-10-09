@@ -70,9 +70,11 @@ public final class PreviewPanel extends JPanel {
         graphics.setColor(PAGE_BORDER);
         graphics.drawRect(x, y, DocumentLayout.PAGE_WIDTH, DocumentLayout.PAGE_HEIGHT);
         for (DocumentLayout.Line line : page.lines()) {
-            graphics.setFont(line.font());
             graphics.setColor(Color.BLACK);
-            graphics.drawString(line.text(), x + line.x(), y + line.baselineY());
+            for (DocumentLayout.Segment segment : line.segments()) {
+                graphics.setFont(segment.font());
+                graphics.drawString(segment.text(), x + segment.x(), y + line.baselineY());
+            }
         }
     }
 
